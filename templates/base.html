@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ GENERATIONS[current_gen].title }}{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='sprites.css') }}">
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <a href="/" class="site-title">Pokédex Tracker</a>
+    {% if stats %}
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" style="width: {{ (stats.caught / stats.total * 100)|round(1) if stats.total else 0 }}%"></div>
+      <span class="progress-label">{{ stats.caught }}/{{ stats.total }}</span>
+    </div>
+    {% endif %}
+    <nav>
+      <a href="/">Dex</a>
+      <a href="/walkthrough">Walkthrough</a>
+      <a href="/stats">Stats</a>
+      <a href="/trades">Trades</a>
+      <a href="/boxes">Boxes</a>
+    </nav>
+    {% if seeded_gens|length > 1 %}
+    <div class="gen-switcher">
+      {% for gen_num, gen_cfg in GENERATIONS.items() if gen_num in seeded_gens %}
+      <a href="/switch-gen/{{ gen_num }}"
+         class="gen-tab{% if gen_num == current_gen %} gen-tab-active{% endif %}">{{ gen_cfg.label }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <div class="header-user">
+      <a href="/settings" class="header-settings">Settings</a>
+    </div>
+  </div>
+</header>
+<main>
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

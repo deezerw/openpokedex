@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Trades — {{ GENERATIONS[current_gen].title }}{% endblock %}
+{% block content %}
+<h1>Trade Evolutions</h1>
+<p>Pokémon that require a link-cable trade to evolve. Batch these into one cable session.</p>
+
+{% set missing_count = trade_evos | selectattr("caught", "equalto", 0) | list | length %}
+{% set total_count = trade_evos | length %}
+<p class="result-count">{{ total_count - missing_count }}/{{ total_count }} obtained</p>
+
+{% if item_summary %}
+<section class="trade-items">
+  <h2>Trade items needed</h2>
+  <p class="stat-sub">Each item is consumed when its Pokémon trade-evolves. <strong>Need</strong> = items to gather for the trade-evos you still need; total in parentheses covers every trade Pokémon.</p>
+  <ul class="trade-item-list">
+    {% for it in item_summary %}
+    <li class="trade-item{% if it.remaining == 0 %} trade-item-done{% endif %}">
+      <span class="trade-item-qty">×{{ it.remaining }}</span>
+      <span class="trade-item-name">{{ it.item }}</span>
+      <span class="trade-item-total">({{ it.total }} total)</span>
+      <span class="trade-item-mons">
+        {% for m in it.mons %}<a href="/pokemon/{{ m.dex_no }}" class="trade-item-mon{% if m.caught %} caught{% elif not m.needed %} unobtainable{% endif %}">{{ m.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<table class="dex-table">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th></th>
+      <th>Evolution</th>
+      <th>Type</th>
+      <th>Trade Item</th>
+      <th>Evolves From</th>
+      <th>Pre-evo</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in trade_evos %}
+    <tr class="{% if t.caught %}caught{% else %}missing{% endif %}{% if t.dex_no in unobtainable %} unobtainable{% endif %}">
+      <td class="dex-no">{{ "%03d"|format(t.dex_no) }}</td>
+      <td class="sprite-cell">
+        <img src="/static/sprites/gen{{ current_gen }}/{{ t.dex_no }}.png" alt="" class="dex-sprite" loading="lazy">
+      </td>
+      <td>
+        <a href="/pokemon/{{ t.dex_no }}">{{ t.name }}</a>
+        {% if t.dex_no in unobtainable %}<span class="badge-unobtainable" title="Can't be obtained with your games">unobtainable</span>{% endif %}
+      </td>
+      <td>
+        <span class="type-badge type-{{ t.type1|lower }}">{{ t.type1 }}</span>
+        {% if t.type2 %}<span class="type-badge type-{{ t.type2|lower }}">{{ t.type2 }}</span>{% endif %}
+      </td>
+      <td>
+        {% if t.trade_item %}<span class="trade-item-tag">{{ t.trade_item }}</span>{% else %}<span class="stat-sub">— (just trade)</span>{% endif %}
+      </td>
+      <td>
+        {% if t.pre_dex_no %}
+          <span class="sprite-cell" style="display:inline-block;vertical-align:middle;">
+            <img src="/static/sprites/gen{{ current_gen }}/{{ t.pre_dex_no }}.png" alt="" class="dex-sprite" loading="lazy" style="width:28px;height:28px;">
+          </span>
+          <a href="/pokemon/{{ t.pre_dex_no }}">#{{ "%03d"|format(t.pre_dex_no) }} {{ t.pre_name }}</a>
+        {% else %}—{% endif %}
+      </td>
+      <td>
+        {% if t.pre_caught is not none %}
+          {% if t.pre_caught %}<span class="status-caught">Yes</span>{% else %}<span class="status-missing">No</span>{% endif %}
+        {% else %}—{% endif %}
+      </td>
+      <td class="catch-cell">
+        <form method="post" action="/pokemon/{{ t.dex_no }}/toggle?next={{ request.full_path | urlencode }}" class="inline-toggle">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <button type="submit" class="btn-inline-catch {% if t.caught %}is-caught{% endif %}" title="{% if t.caught %}Mark missing{% else %}Mark caught{% endif %}">
+            {% if t.caught %}✓{% else %}○{% endif %}
+          </button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

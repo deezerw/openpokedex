@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Boxes — Gen 3 Pokédex{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <h1 style="margin:0;">PC Boxes
+    <span style="font-size:0.75rem;color:var(--muted);font-weight:normal;">
+      {% if mode == "60" %}Pokémon Box GCN · 12×5 · 60 per box{% else %}6×5 · 30 per box{% endif %}
+    </span>
+  </h1>
+  {% if current_gen == 3 %}
+  <div style="margin-left:auto;display:flex;gap:0.5rem;">
+    <a href="/boxes?mode=30" class="btn-inline-catch{% if mode == '30' %} active{% endif %}"
+       style="{% if mode == '30' %}background:var(--caught-bg);border-color:var(--caught-color);{% endif %}">30-slot</a>
+    <a href="/boxes?mode=60" class="btn-inline-catch{% if mode == '60' %} active{% endif %}"
+       style="{% if mode == '60' %}background:var(--caught-bg);border-color:var(--caught-color);{% endif %}">60-slot</a>
+  </div>
+  {% endif %}
+</div>
+
+{% for box_num, grid in boxes.items() %}
+{% set total = namespace(n=0, caught=0) %}
+{% for row in grid %}{% for cell in row %}{% if cell %}{% set total.n = total.n + 1 %}{% if cell.caught %}{% set total.caught = total.caught + 1 %}{% endif %}{% endif %}{% endfor %}{% endfor %}
+{% set first_dex = (box_num - 1) * box_size + 1 %}
+{% set last_dex  = [box_num * box_size, max_dex] | min %}
+
+<div class="box-section">
+  <div class="box-header">
+    <span class="box-title">Box {{ box_num }}</span>
+    <span class="box-range">#{{ "%03d"|format(first_dex) }}–#{{ "%03d"|format(last_dex) }}</span>
+    <span class="box-count">{{ total.caught }}/{{ total.n }} caught</span>
+    <div class="box-bar-wrap">
+      <div class="box-bar" style="width:{{ (total.caught / total.n * 100)|round(1) if total.n else 0 }}%"></div>
+    </div>
+  </div>
+
+  <div class="box-grid{% if cols == 12 %} box-grid-12{% endif %}" style="--box-cols: {{ cols }};">
+    {% for row in grid %}
+      {% for cell in row %}
+        {% if cell %}
+        <a href="/pokemon/{{ cell.dex_no }}"
+           class="box-cell {% if cell.caught %}box-caught{% elif cell.dex_no in derivable %}box-ready{% else %}box-missing{% endif %}{% if cell.dex_no in unobtainable %} box-unobtainable{% endif %}"
+           title="#{{ '%03d'|format(cell.dex_no) }} {{ cell.name }}{% if cell.dex_no in derivable and not cell.caught %} — ready to obtain{% endif %}{% if cell.dex_no in unobtainable %} — unobtainable with your games{% endif %}">
+          <span class="box-sprite sprite-gen{{ current_gen }} sprite-gen{{ current_gen }}-{{ cell.dex_no }}" aria-hidden="true"></span>
+          <span class="box-dex">#{{ "%03d"|format(cell.dex_no) }}</span>
+          <span class="box-name">{{ cell.name }}</span>
+        </a>
+        {% else %}
+        <div class="box-cell box-empty"></div>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}#{{ "%03d"|format(mon.dex_no) }} {{ mon.name }}{% endblock %}
+{% block content %}
+<div class="detail-nav">
+  {% if prev_mon %}<a href="/pokemon/{{ prev_mon.dex_no }}">← #{{ "%03d"|format(prev_mon.dex_no) }} {{ prev_mon.name }}</a>{% else %}<span></span>{% endif %}
+  <a href="/">Back to list</a>
+  {% if next_mon %}<a href="/pokemon/{{ next_mon.dex_no }}">{{ next_mon.name }} #{{ "%03d"|format(next_mon.dex_no) }} →</a>{% else %}<span></span>{% endif %}
+</div>
+
+<article class="detail-card {% if mon.caught %}caught{% else %}missing{% endif %}">
+  <h1>#{{ "%03d"|format(mon.dex_no) }} {{ mon.name }}
+    <span class="type-badge type-{{ mon.type1|lower }}">{{ mon.type1 }}</span>
+    {% if mon.type2 %}<span class="type-badge type-{{ mon.type2|lower }}">{{ mon.type2 }}</span>{% endif %}
+  </h1>
+
+  <dl class="fact-grid">
+    <dt>Region</dt><dd>{{ mon.region|title }}</dd>
+    <dt>Game</dt><dd>{{ mon.easiest_game }}</dd>
+    <dt>Location</dt><dd>{{ mon.location }}</dd>
+    <dt>Method</dt><dd>{{ mon.method }}</dd>
+    {% if pre_evo %}
+    <dt>Evolves from</dt><dd><a href="/pokemon/{{ pre_evo.dex_no }}">#{{ "%03d"|format(pre_evo.dex_no) }} {{ pre_evo.name }}</a></dd>
+    {% endif %}
+    <dt>Tags</dt><dd>{{ mon.tags }}</dd>
+    {% if mon.seed_notes %}
+    <dt>Notes</dt><dd class="seed-notes">{{ mon.seed_notes }}</dd>
+    {% endif %}
+  </dl>
+
+  <div class="detail-status">
+    <strong>Status:</strong>
+    {% if mon.caught %}
+      <span class="status-caught">Caught</span>
+      {% if mon.caught_at %} on {{ mon.caught_at[:10] }}{% endif %}
+      {% if mon.source_game %} via {{ mon.source_game }}{% endif %}
+    {% else %}
+      <span class="status-missing">Not caught</span>
+    {% endif %}
+    {% if is_unobtainable %}<span class="badge-unobtainable" title="Can't be obtained with your games">unobtainable with your games</span>{% endif %}
+  </div>
+
+  <form class="toggle-form" method="post" action="/pokemon/{{ mon.dex_no }}/toggle">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    {% if not mon.caught %}
+    <label>Game caught in: <input type="text" name="source_game" value="{{ mon.source_game or '' }}" placeholder="{{ mon.easiest_game }}"></label>
+    {% endif %}
+    <button type="submit" class="btn-toggle {% if mon.caught %}btn-uncatch{% else %}btn-catch{% endif %}">
+      {% if mon.caught %}Mark as not caught{% else %}Mark as caught{% endif %}
+    </button>
+  </form>
+
+  <form class="notes-form" method="post" action="/pokemon/{{ mon.dex_no }}/notes">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <label>Game:
+      <input type="text" name="source_game" value="{{ mon.source_game or '' }}" placeholder="{{ mon.easiest_game }}">
+    </label>
+    <label>Your notes:
+      <textarea name="user_notes" rows="3" placeholder="Any notes...">{{ mon.user_notes or '' }}</textarea>
+    </label>
+    <button type="submit">Save notes</button>
+  </form>
+
+  {% if catch_locations_by_game %}
+  <section class="catch-locations">
+    <h2>All Catch Methods</h2>
+    {% for game, entries in catch_locations_by_game.items() %}
+    <div class="catch-game-block">
+      <h3 class="catch-game-title">{{ game|title }}</h3>
+      <table class="catch-table">
+        <thead><tr><th>Location</th><th>Method</th><th>Rate</th><th>Levels</th><th>Notes</th></tr></thead>
+        <tbody>
+          {% for e in entries %}
+          <tr>
+            <td>{{ e.location }}</td>
+            <td><span class="method-badge method-{{ e.method }}">{{ e.method }}</span></td>
+            <td class="catch-rate">{{ e.encounter_rate or '—' }}</td>
+            <td class="catch-levels">{{ 'Lv ' ~ e.levels if e.levels else '—' }}</td>
+            <td class="catch-notes">{{ e.notes or '' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+</article>
+{% endblock %}

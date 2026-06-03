@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Routes — Gen 3 Pokédex{% endblock %}
+{% block content %}
+<h1>Next Session Routes</h1>
+<p>Missing Pokémon grouped by game, then location. Boot the game with the most work first.</p>
+
+{% if not games_sorted %}
+<p class="empty">All caught! Nothing left to do.</p>
+{% endif %}
+
+{% for game, count in games_sorted %}
+<section class="game-section">
+  <h2>{{ game }} <span class="game-count">({{ count }} missing)</span></h2>
+  {% for loc, mons in missing_by_game[game].items() %}
+  <div class="location-group">
+    <h3>{{ loc }}</h3>
+    <ul>
+      {% for mon in mons %}
+      <li class="{% if mon.dex_no in unobtainable %}unobtainable{% endif %}">
+        <a href="/pokemon/{{ mon.dex_no }}">#{{ "%03d"|format(mon.dex_no) }} {{ mon.name }}</a>
+        {% if mon.dex_no in unobtainable %}<span class="badge-unobtainable" title="Can't be obtained with your games">unobtainable</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</section>
+{% endfor %}
+{% endblock %}

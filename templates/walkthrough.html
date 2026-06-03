@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ game_label }} Walkthrough — Pokédex{% endblock %}
+{% block content %}
+<div class="wt-header">
+  <h1>{{ game_label }} — Catch Guide</h1>
+  <p class="stat-sub">
+    Pokémon listed in story order. Each appears at the first location it's catchable.
+    <strong>Catch ×N</strong> means catch N copies for the full living dex.
+    Each Pokémon is assigned to whichever game in your <a href="/walkthrough">play order</a> has the most locations for it.
+  </p>
+  <div class="stat-hero">
+    <span class="stat-big">{{ caught }}</span> / {{ total }}
+    <span class="stat-pct">({{ (caught / total * 100)|round(1) if total else 0 }}%)</span>
+  </div>
+  <button id="wt-uncaught-toggle" class="wt-filter-toggle" type="button" aria-pressed="false">Show only uncaught</button>
+</div>
+
+{% for section in sections %}
+{% if section.pokemon %}
+<section class="wt-section">
+  <h2 class="wt-section-heading">{{ section.label }}</h2>
+  {% if section.notes %}
+  <p class="wt-notes">⚠ {{ section.notes }}</p>
+  {% endif %}
+  {% if section.has_ecard %}
+  <button class="wt-ecard-toggle" onclick="toggleEcard(this)" data-show="0">Show e-Card Pokémon (Japan-only)</button>
+  {% endif %}
+  <div class="wt-mon-grid">
+    {% for mon in section.pokemon %}
+    <a href="/pokemon/{{ mon.dex_no }}" class="wt-mon{% if mon.caught %} wt-mon-caught{% elif mon.dex_no in derivable %} wt-mon-ready{% endif %}{% if mon.ecard_only %} wt-ecard-only{% endif %}">
+      <span class="wt-sprite sprite-gen{{ game_gen }} sprite-gen{{ game_gen }}-{{ mon.dex_no }}" aria-hidden="true"></span>
+      <span class="wt-mon-name">#{{ mon.dex_no }} {{ mon.name }}</span>
+      <span class="wt-mon-method">{{ mon.method }}</span>
+      {% if mon.catch_qty > 1 %}
+      <span class="wt-catch-qty">Catch ×{{ mon.catch_qty }}</span>
+      {% endif %}
+      {% if mon.ecard_only %}
+      <span class="wt-ecard-badge">e-Card</span>
+      {% endif %}
+      {% if mon.caught %}
+      <span class="wt-caught-check">✓</span>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endfor %}
+
+<script>
+function toggleEcard(btn) {
+  var show = btn.dataset.show === '1';
+  var section = btn.closest('.wt-section');
+  section.querySelectorAll('.wt-ecard-only').forEach(function(el) {
+    el.style.display = show ? 'none' : '';
+  });
+  btn.dataset.show = show ? '0' : '1';
+  btn.textContent = show ? 'Show e-Card Pokémon (Japan-only)' : 'Hide e-Card Pokémon';
+}
+document.querySelectorAll('.wt-ecard-only').forEach(function(el) { el.style.display = 'none'; });
+</script>
+<script src="{{ url_for('static', filename='walkthrough_filter.js') }}"></script>
+{% endblock %}

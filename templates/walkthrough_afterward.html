@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Breed & Evolve Afterward — Pokédex{% endblock %}
+{% block content %}
+<div class="wt-header">
+  <h1>Breed &amp; Evolve Afterward</h1>
+  <p class="stat-sub">
+    Everything you can <strong>breed or evolve</strong> from the Pokémon you catch in your playthroughs but don't
+    catch directly — e.g. catch a Quilava and you can breed a Cyndaquil. Make these after the playthroughs; they
+    all count toward your living dex. <a href="/walkthrough">Back to play order</a>.
+  </p>
+  <div class="stat-hero">
+    <span class="stat-big">{{ caught }}</span> / {{ total }}
+    <span class="stat-pct">({{ (caught / total * 100)|round(1) if total else 0 }}%)</span>
+  </div>
+  {% if total %}
+  <button id="wt-uncaught-toggle" class="wt-filter-toggle" type="button" aria-pressed="false">Show only uncaught</button>
+  {% endif %}
+</div>
+
+{% macro mon_grid(items) %}
+<div class="wt-mon-grid">
+  {% for mon in items %}
+  <a href="/pokemon/{{ mon.dex_no }}" class="wt-mon{% if mon.caught %} wt-mon-caught{% elif mon.ready %} wt-mon-ready{% endif %}">
+    <span class="wt-sprite sprite-gen{{ game_gen }} sprite-gen{{ game_gen }}-{{ mon.dex_no }}" aria-hidden="true"></span>
+    <span class="wt-mon-name">#{{ mon.dex_no }} {{ mon.name }}</span>
+    {% if mon.kind == 'trade-evolve' %}
+    <span class="wt-mon-method">trade-evolve from {{ mon.source_name }}</span>
+    {% elif mon.kind == 'evolve' %}
+    <span class="wt-mon-method">evolve from {{ mon.source_name }}</span>
+    {% elif mon.source_name %}
+    <span class="wt-mon-method">breed from {{ mon.source_name }}</span>
+    {% else %}
+    <span class="wt-mon-method">breed</span>
+    {% endif %}
+    {% if mon.caught %}
+    <span class="wt-caught-check">✓</span>
+    {% elif mon.ready %}
+    <span class="wt-catch-qty">ready now</span>
+    {% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% if not total %}
+<p class="wt-notes">Nothing to breed or evolve afterward — everything in your living dex is catchable in the games you play.</p>
+{% endif %}
+
+{% if data.breed or data.evolve %}
+<section class="wt-optional">
+  <button id="wt-optional-toggle" class="wt-filter-toggle is-active" type="button" aria-expanded="true" aria-controls="wt-optional-body">
+    <span class="wt-optional-label">Hide breed &amp; evolve list</span>
+    <span class="wt-optional-count">{{ data.breed|length + data.evolve|length }}</span>
+  </button>
+  <div id="wt-optional-body" class="wt-optional-body">
+    {% if data.breed %}
+    <section class="wt-section">
+      <h2 class="wt-section-heading">Breed ({{ data.breed|length }})</h2>
+      <p class="wt-notes">Breed a caught later-stage Pokémon (with a Ditto if needed) to hatch these pre-evolutions.</p>
+      {{ mon_grid(data.breed) }}
+    </section>
+    {% endif %}
+    {% if data.evolve %}
+    <section class="wt-section">
+      <h2 class="wt-section-heading">Evolve ({{ data.evolve|length }})</h2>
+      <p class="wt-notes">Evolve a caught Pokémon to reach these later stages. Trade-evolutions need a second cart to trade across and back.</p>
+      {{ mon_grid(data.evolve) }}
+    </section>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+<script src="{{ url_for('static', filename='walkthrough_filter.js') }}"></script>
+<script>
+(function () {
+  var KEY = 'wt_show_optional';
+  var btn = document.getElementById('wt-optional-toggle');
+  var body = document.getElementById('wt-optional-body');
+  if (!btn || !body) return;
+  var label = btn.querySelector('.wt-optional-label');
+  function apply(open) {
+    body.hidden = !open;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.classList.toggle('is-active', open);
+    label.textContent = open ? 'Hide breed & evolve list' : 'Show breed & evolve list';
+  }
+  apply(localStorage.getItem(KEY) !== '0');  // expanded by default
+  btn.addEventListener('click', function () {
+    var open = localStorage.getItem(KEY) === '0';
+    localStorage.setItem(KEY, open ? '1' : '0');
+    apply(open);
+  });
+})();
+</script>
+{% endblock %}

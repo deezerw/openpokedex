@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Walkthrough Guides — Pokédex{% endblock %}
+{% block content %}
+<div class="wt-header">
+  <h1>Walkthrough Guides</h1>
+  <p class="stat-sub">Drag to set your play order. Each game shows only Pokémon assigned to it based on where they're most available. <strong>Recommend</strong> orders games so the fewest playthroughs complete your dex — games that add nothing new are flagged skippable.</p>
+</div>
+
+<div class="wt-index-controls">
+  <button class="wt-recommend-btn" id="wt-recommend-btn" onclick="recommendOrder()">Recommend order for my games</button>
+  <span class="wt-save-status" id="wt-save-status"></span>
+</div>
+
+<ol class="wt-order-list" id="wt-order-list">
+  {% for game, cfg in ordered_configs %}
+  <li class="wt-order-item" draggable="true" data-game="{{ game }}">
+    <span class="wt-drag-handle" aria-hidden="true">⠿</span>
+    <span class="wt-order-num"></span>
+    <a href="/walkthrough/{{ game }}" class="wt-order-link">{{ cfg.label }}</a>
+    <span class="wt-mon-count" data-game="{{ game }}">{{ counts[game] }} mons</span>
+    <span class="wt-rec-gain" data-game="{{ game }}"></span>
+  </li>
+  {% endfor %}
+</ol>
+
+<p class="wt-after-link">
+  After all playthroughs:
+  <a href="/walkthrough/afterward">Breed &amp; Evolve checklist →</a>
+  <span class="stat-sub">— the forms you can't catch in any game.</span>
+</p>
+
+<script>
+(function () {
+  var list = document.getElementById('wt-order-list');
+  var status = document.getElementById('wt-save-status');
+  var dragSrc = null;
+  var csrfToken = {{ csrf_token | tojson }};
+
+  function updateNumbers() {
+    list.querySelectorAll('.wt-order-num').forEach(function(el, i) {
+      el.textContent = (i + 1) + '.';
+    });
+  }
+  updateNumbers();
+
+  function updateCounts(counts) {
+    list.querySelectorAll('.wt-mon-count').forEach(function(el) {
+      var game = el.dataset.game;
+      if (counts[game] !== undefined) {
+        el.textContent = counts[game] + ' mons';
+      }
+    });
+  }
+
+  function saveOrder() {
+    var order = Array.from(list.querySelectorAll('.wt-order-item')).map(function(el) {
+      return el.dataset.game;
+    });
+    return fetch('/walkthrough/order', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken
+      },
+      body: JSON.stringify({order: order})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.counts) updateCounts(data.counts);
+      return data.ok;
+    })
+    .catch(function() { return false; });
+  }
+
+  list.querySelectorAll('.wt-order-item').forEach(function(item) {
+    item.addEventListener('dragstart', function(e) {
+      dragSrc = item;
+      item.classList.add('wt-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', function() {
+      item.classList.remove('wt-dragging');
+      list.querySelectorAll('.wt-order-item').forEach(function(i) {
+        i.classList.remove('wt-drag-over');
+      });
+    });
+    item.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (item !== dragSrc) {
+        list.querySelectorAll('.wt-order-item').forEach(function(i) { i.classList.remove('wt-drag-over'); });
+        item.classList.add('wt-drag-over');
+      }
+    });
+    item.addEventListener('drop', function(e) {
+      e.preventDefault();
+      if (dragSrc && item !== dragSrc) {
+        var items = Array.from(list.children);
+        var srcIdx = items.indexOf(dragSrc);
+        var tgtIdx = items.indexOf(item);
+        if (srcIdx < tgtIdx) {
+          item.after(dragSrc);
+        } else {
+          item.before(dragSrc);
+        }
+        updateNumbers();
+        saveOrder();
+      }
+    });
+  });
+
+  window.recommendOrder = function() {
+    var btn = document.getElementById('wt-recommend-btn');
+    btn.disabled = true;
+    btn.textContent = 'Computing…';
+    status.textContent = '';
+    fetch('/walkthrough/recommend')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var order = data.order;
+        var gains = data.gains || {};
+        var itemMap = {};
+        list.querySelectorAll('.wt-order-item').forEach(function(el) {
+          itemMap[el.dataset.game] = el;
+        });
+        var recommended = order.filter(function(gk) { return itemMap[gk]; });
+        var remaining = Object.keys(itemMap).filter(function(gk) { return order.indexOf(gk) === -1; });
+        list.innerHTML = '';
+        recommended.concat(remaining).forEach(function(gk) {
+          list.appendChild(itemMap[gk]);
+        });
+        // Show how many new Pokémon each game unlocks; flag fully-covered games as skippable.
+        list.querySelectorAll('.wt-rec-gain').forEach(function(el) {
+          var gk = el.dataset.game;
+          el.classList.remove('wt-rec-skippable');
+          if (gains[gk] === undefined) { el.textContent = ''; return; }
+          if (gains[gk] > 0) {
+            el.textContent = '+' + gains[gk] + ' new';
+          } else {
+            el.textContent = 'adds nothing — skippable';
+            el.classList.add('wt-rec-skippable');
+          }
+        });
+        updateNumbers();
+        status.textContent = 'Saving…';
+        return saveOrder();
+      })
+      .then(function(ok) {
+        status.textContent = ok ? 'Recommended order applied.' : 'Applied but save failed.';
+        setTimeout(function() { status.textContent = ''; }, 3000);
+      })
+      .catch(function() {
+        status.textContent = 'Failed to fetch recommendation.';
+      })
+      .finally(function() {
+        btn.disabled = false;
+        btn.textContent = 'Recommend order for my games';
+      });
+  };
+})();
+</script>
+{% endblock %}

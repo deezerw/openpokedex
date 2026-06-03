@@ -1,0 +1,57 @@
+name: Build Windows .exe
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # required for softprops/action-gh-release to publish .exe to a Release
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller pillow
+
+      - name: Generate Poké Ball icon
+        run: python scripts/make_icon.py
+
+      - name: Build .exe with PyInstaller
+        run: pyinstaller --noconfirm OpenPokedex.spec
+
+      - name: Show artifact
+        run: |
+          dir dist
+          Get-Item dist\OpenPokedex.exe | Select-Object FullName, Length
+
+      - name: Upload .exe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenPokedex-windows
+          path: dist/OpenPokedex.exe
+          if-no-files-found: error
+
+      - name: Attach .exe to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/OpenPokedex.exe
+          draft: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

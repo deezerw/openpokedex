@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<div class="settings-page">
+  {% if welcome %}
+  <h1>Welcome!</h1>
+  <p class="settings-desc">Which games do you own? The tracker will hide catch spots from games you don't have and flag Pokémon you can't obtain yet.</p>
+  {% else %}
+  <h1>Settings</h1>
+  <p class="settings-desc">Tell the tracker which games you own. Catch spots in games you don't own are hidden, and Pokémon you can't obtain are flagged.</p>
+  {% endif %}
+
+  <form method="post" action="/settings">
+  <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+  {% if welcome %}<input type="hidden" name="welcome" value="1">{% endif %}
+    {% for gen_num, cfg in GENERATIONS.items() %}
+    {% if gen_num in seeded_gens %}
+    <fieldset class="settings-gen">
+      <legend>{{ cfg.label }}</legend>
+      <div class="settings-games">
+        {% for gm in cfg.game_order %}
+        <label class="settings-game">
+          <input type="checkbox" name="own_{{ gm }}" value="1" {% if gm in owned_set %}checked{% endif %}>
+          {{ game_name(gm) }}
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    {% endif %}
+    {% endfor %}
+
+    <fieldset class="settings-gen">
+      <legend>Event Distributions</legend>
+      <div class="settings-games">
+        <label class="settings-game">
+          <input type="checkbox" name="bonus_disc_en" value="1" {% if bonus_disc_en %}checked{% endif %}>
+          Colosseum Bonus Disc (English) — Jirachi
+        </label>
+        <label class="settings-game">
+          <input type="checkbox" name="pokemon_channel_pal" value="1" {% if pokemon_channel_pal %}checked{% endif %}>
+          Pokémon Channel (PAL) — Jirachi
+        </label>
+        <label class="settings-game">
+          <input type="checkbox" name="bonus_disc_jp" value="1" {% if bonus_disc_jp %}checked{% endif %}>
+          Colosseum Bonus Disc (Japanese) — Celebi
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset class="settings-gen">
+      <legend>Glitches</legend>
+      <label class="settings-game">
+        <input type="checkbox" name="use_glitches" value="1" {% if use_glitches %}checked{% endif %}>
+        Use glitches — count event-only Pokémon (Mew, Celebi, Jirachi, Deoxys) as obtainable
+      </label>
+    </fieldset>
+
+    <fieldset class="settings-gen">
+      <legend>Display</legend>
+      <label class="settings-game">
+        <input type="checkbox" name="show_ready_to_obtain" value="1" {% if show_ready_to_obtain %}checked{% endif %}>
+        Ready to obtain — highlight Pokémon you can evolve or breed from your current collection
+      </label>
+    </fieldset>
+
+    <div class="settings-actions">
+      <button type="submit" class="btn-catch">{% if welcome %}Get started{% else %}Save settings{% endif %}</button>
+    </div>
+  </form>
+
+  {% if not welcome %}
+  <fieldset class="settings-gen settings-danger">
+    <legend>Reset Progress</legend>
+    {% if reset_done is not none %}
+    <p class="settings-reset-done">✓ Reset complete — cleared {{ reset_done }} caught Pokémon in {{ GENERATIONS[current_gen].label }}.</p>
+    {% endif %}
+    <p class="settings-desc">Mark every Pokémon as uncaught for <strong>{{ GENERATIONS[current_gen].label }}</strong>. This clears your catches for this generation only; your owned-games and notes are kept. This can't be undone.</p>
+    <form method="post" action="/settings/reset"
+          onsubmit="return confirm('Reset ALL {{ GENERATIONS[current_gen].label }} progress? Every Pokémon will be marked uncaught. This cannot be undone.');">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <button type="submit" class="btn-danger">Reset {{ GENERATIONS[current_gen].label }} progress</button>
+    </form>
+  </fieldset>
+  {% endif %}
+</div>
+{% endblock %}

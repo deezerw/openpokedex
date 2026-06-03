@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Pokédex — {{ stats.caught }}/{{ stats.total }}{% endblock %}
+{% block content %}
+<section class="filters">
+  <form method="get" action="/">
+    <label>Region
+      <select name="region">
+        <option value="">All</option>
+        {% for r in GENERATIONS[current_gen].regions %}
+        <option value="{{ r }}" {% if filters.region == r %}selected{% endif %}>{{ r|title }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Caught
+      <select name="caught">
+        <option value="">All</option>
+        <option value="no" {% if filters.caught == "no" %}selected{% endif %}>Missing</option>
+        <option value="yes" {% if filters.caught == "yes" %}selected{% endif %}>Caught</option>
+      </select>
+    </label>
+    <label>Tag
+      <select name="tag">
+        <option value="">All</option>
+        {% for t in ["trade-evo","breed-only","event-only","legendary","starter","gift","safari","colosseum-shadow","xd-shadow","static"] %}
+        <option value="{{ t }}" {% if filters.tag == t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Type
+      <select name="type">
+        <option value="">All</option>
+        {% for t in ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel"] %}
+        <option value="{{ t }}" {% if filters.type == t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Search
+      <input type="text" name="q" id="search-box" value="{{ filters.q }}" placeholder="name…" style="width:120px" autocomplete="off">
+    </label>
+    <button type="submit">Filter</button>
+    <a href="/" class="btn-reset">Reset</a>
+  </form>
+</section>
+
+<p class="result-count" id="result-count">{{ pokemon|length }} Pokémon shown</p>
+
+<table class="dex-table">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th></th>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Versions</th>
+      <th>Method</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for mon in pokemon %}
+    <tr class="{% if mon.caught %}caught{% elif mon.dex_no in derivable %}ready{% else %}missing{% endif %}{% if mon.dex_no in unobtainable %} unobtainable{% endif %}">
+      <td class="dex-no">{{ "%03d"|format(mon.dex_no) }}</td>
+      <td class="sprite-cell"><img src="/static/sprites/gen{{ current_gen }}/{{ mon.dex_no }}.png" alt="" class="dex-sprite" loading="lazy"></td>
+      <td>
+        <a href="/pokemon/{{ mon.dex_no }}">{{ mon.name }}</a>
+        {% if mon.dex_no in unobtainable %}<span class="badge-unobtainable" title="Can't be obtained with your games">unobtainable</span>{% endif %}
+      </td>
+      <td>
+        <span class="type-badge type-{{ mon.type1|lower }}">{{ mon.type1 }}</span>
+        {% if mon.type2 %}<span class="type-badge type-{{ mon.type2|lower }}">{{ mon.type2 }}</span>{% endif %}
+      </td>
+      <td class="game-cell">
+        {% set v = versions.get(mon.dex_no) %}
+        {% if v %}<span class="version-tag" title="Catchable in: {{ version_titles.get(mon.dex_no) }}">{{ v }}</span>{% else %}<span class="version-none" title="Not catchable in any version — obtain by evolving, breeding, or trading">—</span>{% endif %}
+      </td>
+      <td>{{ mon.method }}</td>
+      <td class="catch-cell">
+        <form method="post" action="/pokemon/{{ mon.dex_no }}/toggle?next={{ request.full_path | urlencode }}" class="inline-toggle">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <button type="submit" class="btn-inline-catch {% if mon.caught %}is-caught{% endif %}" title="{% if mon.caught %}Mark missing{% else %}Mark caught{% endif %}">
+            {% if mon.caught %}✓{% else %}○{% endif %}
+          </button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<script>
+(function () {
+  // Dropdowns: auto-submit on change
+  document.querySelectorAll(".filters select").forEach(function (sel) {
+    sel.addEventListener("change", function () { this.form.submit(); });
+  });
+
+  // Search box: live client-side filter
+  var searchBox = document.getElementById("search-box");
+  var rows = document.querySelectorAll(".dex-table tbody tr");
+  var countEl = document.getElementById("result-count");
+
+  searchBox.addEventListener("input", function () {
+    var q = this.value.toLowerCase();
+    var visible = 0;
+    rows.forEach(function (row) {
+      var name = row.cells[2].textContent.toLowerCase();
+      var show = name.includes(q);
+      row.style.display = show ? "" : "none";
+      if (show) visible++;
+    });
+    countEl.textContent = visible + " Pokémon shown";
+  });
+})();
+</script>
+{% endblock %}
